@@ -14,7 +14,7 @@ api = Blueprint('api', __name__)
 # Allow CORS requests to this API
 CORS(api)
 
-# Example route
+# Example public route
 @api.route('/hello', methods=['GET'])
 def handle_hello():
     response_body = {
@@ -22,12 +22,11 @@ def handle_hello():
     }
     return jsonify(response_body), 200
 
-
 # SIGNUP route
 @api.route('/signup', methods=['POST'])
 def signup():
     data = request.get_json()
-    
+
     if not data or not data.get("email") or not data.get("password"):
         return jsonify({"msg": "Email and password are required"}), 400
 
@@ -35,33 +34,34 @@ def signup():
     if existing_user:
         return jsonify({"msg": "User already exists"}), 400
 
-   
-    new_user = User(email=data["email"], password=data["password"], is_active=True)
+    hashed_password = generate_password_hash(data["password"])
+    new_user = User(email=data["email"], password=hashed_password, is_active=True)
 
     db.session.add(new_user)
     db.session.commit()
 
-    return jsonify({"msg": "User created"}), 201
+    return jsonify({"msg": "User created successfully"}), 201
 
-#LOGIN route
-@api.route('/login', methods = ['POST'])
+# LOGIN route
+@api.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
 
     if not data or not data.get("email") or not data.get("password"):
         return jsonify({"msg": "Email and password are required"}), 400
-    
-    user = db.session.query(User).filter_by(email = data["email"]).first()
+
+    user = db.session.query(User).filter_by(email=data["email"]).first()
     if not user or not check_password_hash(user.password, data["password"]):
         return jsonify({"msg": "Invalid credentials"}), 401
-    
+
     access_token = create_access_token(identity=str(user.id))
     return jsonify(access_token=access_token), 200
 
-@api.route('/protected', methods = ['GET'])
+# PROTECTED route
+@api.route('/protected', methods=['GET'])
 @jwt_required()
 def protected_route():
     user_id = get_jwt_identity()
     return jsonify({
-        "msg": f"Hellow user {user_id}, this is protected content"
+        "msg": f"Hello user {user_id}, this is protected content"
     }), 200
